@@ -4,6 +4,13 @@ on:
   push:
     tags:
       - v*
+  workflow_dispatch:  # 新增：添加手动触发事件
+    inputs:  # 可选：配置手动触发时的输入参数，方便指定架构（非必需，但更实用）
+      arch:
+        description: '指定要编译的架构（留空则编译所有架构）'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   build:
@@ -40,6 +47,8 @@ jobs:
           - mipsel_74kc
           - mipsel_mips32
           - x86_64
+    # 可选：如果手动指定了架构，只运行该架构的编译（优化手动触发体验）
+    if: ${{ github.event.inputs.arch == '' || matrix.arch == github.event.inputs.arch }}
 
     steps:
       - uses: actions/checkout@v4
@@ -63,8 +72,10 @@ jobs:
       - name: Upload packages
         uses: ncipollo/release-action@v1
         with:
-          name: ${{ github.ref_name }}
+          name: ${{ github.ref_name || 'Manual Build' }}  # 适配手动触发时的名称
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
           replacesArtifacts: true
           artifacts: "bin/packages/${{ matrix.arch }}/packages_ci/*.ipk"
+          # 手动触发时不强制依赖tag，避免报错
+          tag: ${{ github.ref_name || 'manual-build' }}
